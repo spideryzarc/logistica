@@ -1,7 +1,9 @@
 from utils import *
 import pyomo.environ as env
 def createPyomoModel(capacity,demand,cost):
+    #numero de fornecedores
     N = len(capacity)
+    #numero de clientes
     M = len(demand)
 
     capDic = vectorToDic(capacity)
@@ -15,7 +17,7 @@ def createPyomoModel(capacity,demand,cost):
     model.J = env.Set(initialize=demDic.keys(), doc='Conjunto de consumidores')
     #dados
     model.a = env.Param(model.I,initialize=capDic,doc='Capacidade de cada fornecedor')
-    model.b = env.Param(model.J, initialize=demDic, doc='Demanda de cada fornecedor')
+    model.b = env.Param(model.J, initialize=demDic, doc='Demanda de cada consumidor')
     model.C = env.Param(model.I,model.J,initialize=costDic,doc='Custo de transporte unitario')
     #variaveis
     model.x = env.Var(model.I,model.J,bounds=(0,None),doc='quantidade transportada de i a j')
@@ -29,12 +31,11 @@ def createPyomoModel(capacity,demand,cost):
     # demanda
     model.dem = env.Constraint(model.J, rule=lambda model, j: sum(model.x[i, j] for i in model.I) == model.b[j])
 
-
     return model
 
 
 
 model = createPyomoModel([1,1],[1,1],[[21,22],[23,24]])
+
 result = solveWithGurobi(model)
 model.display()
-print result
