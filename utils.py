@@ -11,8 +11,8 @@ def solveWithGurobi(model):
     return results
 
 
-def solveWithLPSolve(model):
+def solveWithGLPK(model):
     from pyomo.environ import SolverFactory
-    opt = SolverFactory("lp_solve")
+    opt = SolverFactory("glpk")
     results = opt.solve(model)
     return results
