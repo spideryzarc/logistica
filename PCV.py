@@ -1,6 +1,8 @@
 import random as rd
 import matplotlib.pyplot as plt
 import numpy as np
+from utils import *
+import pyomo.environ as env
 rd.seed(7)
 
 def createRandomInstance(n, max=100):
@@ -17,6 +19,7 @@ def plot(pts, sol = None):
         x.append(pts[sol[0]][0])
         y.append(pts[sol[0]][1])
         plt.plot(x, y, '-')
+    plt.show()
 
 def dist(pts):
     mat = np.zeros((len(pts),len(pts)))
@@ -68,20 +71,42 @@ def nearestNeighbor(c, first = 0):
         nvsize-=1
     return sol
 
+def createPyomoModel(pts):
+    C = dist(pts)
+    Cdic = matrixToDic(C)
+    model = env.ConcreteModel()
+    model.name = 'PCV'
+    model.V = env.Set(initialize=range(len(pts)),doc='conjunto dos vertices')
+    model.x = env.Var(model.V,model.V,within=env.Binary,doc='se o arco (i,j) eh usado ou nao')
+    model.c = env.Param(model.V,model.V,initialize=Cdic,doc='custo do arco (i,j)')
+
+    model.objective = env.Objective(rule=lambda model: sum(model.x[i,j]*model.c[i,j] for i in model.V for j in model.V if i!=j)
+                                     ,sense=env.minimize)
+
+    model.leaving = env.Constraint(model.V,rule=lambda model,i:sum(model.x[i,j] for j in model.V if i!=j) ==1)
+    model.incoming = env.Constraint(model.V, rule=lambda model, j: sum(model.x[i,j] for i in model.V if i != j) == 1)
+
+
+    return model
 
 
 
+model = createPyomoModel(createRandomInstance(5))
+solveWithGLPK(model)
+model.display()
+model.x[0,0].value
 
-pts = createRandomInstance(1000)
-c = dist(pts)
-bestCost = np.inf
-bestSol = None
-for i in range(len(pts)):
-    sol = nearestNeighbor(c,i)
-    custo = custoSol(sol,c)
-    if(bestCost > custo):
-        bestCost = custo
-        bestSol = list(sol)
-        print bestCost
-plot(pts,bestSol)
-print bestSol
+
+# pts = createRandomInstance(50)
+# c = dist(pts)
+# bestCost = np.inf
+# bestSol = None
+# for i in range(len(pts)):
+#     sol = nearestNeighbor(c,i)
+#     custo = custoSol(sol,c)
+#     if(bestCost > custo):
+#         bestCost = custo
+#         bestSol = list(sol)
+#         print bestCost
+# plot(pts,bestSol)
+# print bestSol
