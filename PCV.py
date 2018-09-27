@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from utils import *
 import pyomo.environ as env
-rd.seed(7)
+
+rd.seed(123)
 
 def createRandomInstance(n, max=100):
     return [(rd.random()*max,rd.random()*max) for i in range(n)]
 
-def plot(pts, sol = None):
+def plotSol(pts, sol = None):
     x = [p[0] for p in pts]
     y = [p[1] for p in pts]
     plt.close()
@@ -39,37 +40,8 @@ def custoSol(sol,c):
     s+= c[sol[len(sol)-1]][sol[0]]
     return s
 
-def randomSearch(sol,c, ite = 100000, pts = None):
-    bestCost = custoSol(sol,c)
-    bestSol = list(sol)
-    for i in range(ite):
-        rd.shuffle(sol)
-        cost = custoSol(sol,c)
-        if cost < bestCost:
-            bestCost =cost
-            bestSol = list(sol)
-            print cost
-            if pts != None:
-                plot(pts,sol)
-    return bestSol
 
 
-def nearestNeighbor(c, first = 0):
-    sol = [first]
-    nv = [i for i in range(len(c)) if i != first]
-    nvsize = len(nv)
-    for i in range(1,len(c)):
-        min = np.inf
-        arg = -1
-        pivot = sol[i-1]
-        for j in range(nvsize):
-            if min > c[pivot][nv[j]]:
-                min = c[pivot][nv[j]]
-                arg = j
-        sol.append(nv[arg])
-        nv[arg] = nv[nvsize-1]
-        nvsize-=1
-    return sol
 
 def createPyomoModel(pts):
     C = dist(pts)
@@ -105,35 +77,104 @@ def createPyomoModel(pts):
     return model
 
 
-def plot(model):
-    pts = model.pts
-    x = [p[0] for p in pts]
-    y = [p[1] for p in pts]
-    plt.close()
-    plt.plot(x, y, 'ro')
-    for i in range(len(pts)):
-        for j in range(len(pts)):
-            if model.x[i,j].value >= 1:
-                plt.plot([x[i],x[j]], [y[i],y[j]], '-')
-    plt.show()
+# def plot(model):
+#     pts = model.pts
+#     x = [p[0] for p in pts]
+#     y = [p[1] for p in pts]
+#     plt.close()
+#     plt.plot(x, y, 'ro')
+#     for i in range(len(pts)):
+#         for j in range(len(pts)):
+#             if model.x[i,j].value >= 1:
+#                 plt.plot([x[i],x[j]], [y[i],y[j]], '-')
+#     plt.show()
+
+def getSol(model):
+    solveWithGLPK(model)
+    sol = [0]
+    while len(sol) < len(model.pts):
+        for i in range(1,len(model.pts)):
+            if model.x[sol[-1],i] == 1:
+                sol.append(i)
+                break
+    return sol
+
+#HEURISTICAS
+
+#testa ite permutacoes aleatorias e retorna a de menor custo
+def randomSearch(sol,c, ite = 10000, pts = None):
+    bestCost = custoSol(sol,c)
+    bestSol = list(sol)
+    for i in range(ite):
+        rd.shuffle(sol)
+        cost = custoSol(sol,c)
+        if cost < bestCost:
+            bestCost =cost
+            bestSol = list(sol)
+            # print cost
+            if pts != None:
+                plotSol(pts,sol)
+    return bestSol
+
+#
+def nearestNeighbor(c, first = 0):
+    sol = [first]
+    nv = [i for i in range(len(c)) if i != first]
+    nvsize = len(nv)
+    for i in range(1,len(c)):
+        min = np.inf
+        arg = -1
+        pivot = sol[i-1]
+        for j in range(nvsize):
+            if min > c[pivot][nv[j]]:
+                min = c[pivot][nv[j]]
+                arg = j
+        sol.append(nv[arg])
+        nv[arg] = nv[nvsize-1]
+        nvsize-=1
+    return sol
+
+def shiftRight(sol, c,pts):
+    for i in range(1,len(sol)-1):
+        remDelta = c[sol[i-1]][sol[i+1]]\
+                   -c[sol[i-1]][sol[i]]\
+                   -c[sol[i]][sol[i+1]]
+        for j in range(i+2,len(sol)-1):
+                addDelta = c[sol[j]][sol[i]]\
+                           +c[sol[i]][sol[j+1]]\
+                           -c[sol[j]][sol[j+1]]
+                if remDelta+addDelta < -.001:
+                    # print 'shift',i,j, remDelta+addDelta
+                    # print custoSol(sol,c)+remDelta+addDelta,sol
+                    # plotSol(pts,sol)
+                    tmp = sol[i]
+                    for k in range(i,j):
+                        sol[k] = sol[k+1]
+                    sol[j] =tmp
+                    # print custoSol(sol, c), sol
+                    # plotSol(pts, sol)
+                    return True
+    return False
+# model = createPyomoModel(createRandomInstance(10))
+# sol = getSol(model)
+# # plotSol(model.pts,sol)
+# print model.objective.expr()
 
 
-model = createPyomoModel(createRandomInstance(15))
-solveWithGLPK(model)
-model.display()
-plot(model)
+pts = createRandomInstance(100)
+sol = [i for i in range(len(pts))]
+c = dist(pts)
+sol = randomSearch(sol,c)
+print 'tentativas aleatorias ', custoSol(sol,c)
+# plotSol(pts,sol)
+while shiftRight(sol, c,pts):
+    pass
+print 'tentativas aleatorias + melhoramentos ', custoSol(sol,c)
 
+sol = nearestNeighbor(c)
+print 'vizinho mais proximo ',custoSol(sol,c)
+plotSol(pts,sol)
+while shiftRight(sol, c,pts):
+    pass
+print 'vizinho mais proximo + melhoramentos ', custoSol(sol,c)
 
-# pts = createRandomInstance(50)
-# c = dist(pts)
-# bestCost = np.inf
-# bestSol = None
-# for i in range(len(pts)):
-#     sol = nearestNeighbor(c,i)
-#     custo = custoSol(sol,c)
-#     if(bestCost > custo):
-#         bestCost = custo
-#         bestSol = list(sol)
-#         print bestCost
-# plot(pts,bestSol)
-# print bestSol
