@@ -155,26 +155,87 @@ def shiftRight(sol, c,pts):
                     # plotSol(pts, sol)
                     return True
     return False
+
+def shiftLeft(sol, c,pts):
+    for i in range(3,len(sol)-1):
+        remDelta = c[sol[i-1]][sol[i+1]]\
+                   -c[sol[i-1]][sol[i]]\
+                   -c[sol[i]][sol[i+1]]
+        for j in range(0,i-2):
+                addDelta = c[sol[j]][sol[i]]\
+                           +c[sol[i]][sol[j+1]]\
+                           -c[sol[j]][sol[j+1]]
+                if remDelta+addDelta < -.001:
+                    # print 'shift',i,j, remDelta+addDelta
+                    # print custoSol(sol,c)+remDelta+addDelta
+                    # print sol
+                    # plotSol(pts,sol)
+
+                    tmp = sol[i]
+                    for k in range(i,j+1,-1):
+                        sol[k] = sol[k-1]
+                    sol[j+1] =tmp
+                    # print custoSol(sol, c)
+                    # print sol
+                    # plotSol(pts, sol)
+                    return True
+    return False
 # model = createPyomoModel(createRandomInstance(10))
 # sol = getSol(model)
 # # plotSol(model.pts,sol)
 # print model.objective.expr()
 
+def opt2(sol, c,pts):
+    n = len(sol)
+    for i in range(0,n):
+        for j in range(i+2,n):
+            delta = c[sol[i]][sol[j]]\
+                    + c[sol[(i+1)%n]][sol[(j+1)%n]]\
+                    -c[sol[i]][sol[(i+1)%n]]\
+                    -c[sol[j]][sol[(j+1)%n]]
+            if delta < -0.001:
+                print i, j, custoSol(sol,c)+delta
+                print sol
+                k1 = i+1
+                k2 = j
+                while k1<k2:
+                    aux = sol[k1]
+                    sol[k1] = sol[k2]
+                    sol[k2] = aux
+                    k1+=1
+                    k2-=1
+                print sol
+                print custoSol(sol,c)
+                return True
+    return False
 
-pts = createRandomInstance(100)
+def VND(sol, c, pts):
+    melhorou = True
+    while melhorou:
+        melhorou = False
+        melhorou = shiftLeft(sol,c,pts)
+        if not melhorou:
+            melhorou = shiftRight(sol,c,pts)
+        if not melhorou:
+            melhorou = opt2(sol,c,pts)
+
+    return sol
+
+pts = createRandomInstance(500)
 sol = [i for i in range(len(pts))]
 c = dist(pts)
-sol = randomSearch(sol,c)
-print 'tentativas aleatorias ', custoSol(sol,c)
-# plotSol(pts,sol)
-while shiftRight(sol, c,pts):
-    pass
-print 'tentativas aleatorias + melhoramentos ', custoSol(sol,c)
+
+
+# sol = randomSearch(sol,c)
+# print 'tentativas aleatorias ', custoSol(sol,c)
+# # plotSol(pts,sol)
+# VND(sol,c,pts)
+# print 'tentativas aleatorias + melhoramentos ', custoSol(sol,c)
 
 sol = nearestNeighbor(c)
 print 'vizinho mais proximo ',custoSol(sol,c)
-plotSol(pts,sol)
-while shiftRight(sol, c,pts):
-    pass
+
+VND(sol,c,pts)
 print 'vizinho mais proximo + melhoramentos ', custoSol(sol,c)
+plotSol(pts,sol)
 
