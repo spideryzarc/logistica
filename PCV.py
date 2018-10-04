@@ -22,16 +22,7 @@ def plotSol(pts, sol = None):
         plt.plot(x, y, '-')
     plt.show()
 
-def dist(pts):
-    mat = np.zeros((len(pts),len(pts)))
-    for i in range(len(pts)):
-        xi = pts[i][0]
-        yi = pts[i][1]
-        for j in range(i):
-            xj = pts[j][0]
-            yj = pts[j][1]
-            mat[i][j] = mat[j][i] = np.sqrt((xi-xj)**2+(yi-yj)**2)
-    return mat
+
 
 def custoSol(sol,c):
     s = 0
