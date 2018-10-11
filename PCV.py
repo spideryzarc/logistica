@@ -125,7 +125,7 @@ def nearestNeighbor(c, first = 0):
         nvsize-=1
     return sol
 
-def shiftRight(sol, c,pts):
+def shiftRight(sol, c):
     for i in range(1,len(sol)-1):
         remDelta = c[sol[i-1]][sol[i+1]]\
                    -c[sol[i-1]][sol[i]]\
@@ -147,7 +147,7 @@ def shiftRight(sol, c,pts):
                     return True
     return False
 
-def shiftLeft(sol, c,pts):
+def shiftLeft(sol, c):
     for i in range(3,len(sol)-1):
         remDelta = c[sol[i-1]][sol[i+1]]\
                    -c[sol[i-1]][sol[i]]\
@@ -176,7 +176,7 @@ def shiftLeft(sol, c,pts):
 # # plotSol(model.pts,sol)
 # print model.objective.expr()
 
-def opt2(sol, c,pts):
+def opt2(sol, c):
     n = len(sol)
     for i in range(0,n):
         for j in range(i+2,n):
@@ -185,8 +185,8 @@ def opt2(sol, c,pts):
                     -c[sol[i]][sol[(i+1)%n]]\
                     -c[sol[j]][sol[(j+1)%n]]
             if delta < -0.001:
-                print i, j, custoSol(sol,c)+delta
-                print sol
+                # print i, j, custoSol(sol,c)+delta
+                # print sol
                 k1 = i+1
                 k2 = j
                 while k1<k2:
@@ -195,26 +195,25 @@ def opt2(sol, c,pts):
                     sol[k2] = aux
                     k1+=1
                     k2-=1
-                print sol
-                print custoSol(sol,c)
+                # print sol
+                # print custoSol(sol,c)
                 return True
     return False
 
-def VND(sol, c, pts):
+def VND(sol, c):
     melhorou = True
     while melhorou:
-        melhorou = False
-        melhorou = shiftLeft(sol,c,pts)
+        melhorou = shiftLeft(sol,c)
         if not melhorou:
-            melhorou = shiftRight(sol,c,pts)
+            melhorou = shiftRight(sol,c)
         if not melhorou:
-            melhorou = opt2(sol,c,pts)
+            melhorou = opt2(sol,c)
 
     return sol
 
-pts = createRandomInstance(500)
-sol = [i for i in range(len(pts))]
-c = dist(pts)
+# pts = createRandomInstance(500)
+# sol = [i for i in range(len(pts))]
+# c = dist(pts)
 
 
 # sol = randomSearch(sol,c)
@@ -223,10 +222,10 @@ c = dist(pts)
 # VND(sol,c,pts)
 # print 'tentativas aleatorias + melhoramentos ', custoSol(sol,c)
 
-sol = nearestNeighbor(c)
-print 'vizinho mais proximo ',custoSol(sol,c)
-
-VND(sol,c,pts)
-print 'vizinho mais proximo + melhoramentos ', custoSol(sol,c)
-plotSol(pts,sol)
+# sol = nearestNeighbor(c)
+# print 'vizinho mais proximo ',custoSol(sol,c)
+#
+# VND(sol,c,pts)
+# print 'vizinho mais proximo + melhoramentos ', custoSol(sol,c)
+# plotSol(pts,sol)
 

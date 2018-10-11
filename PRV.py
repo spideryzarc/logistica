@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from utils import *
 import pyomo.environ as env
+from PCV import custoSol, VND
+
 
 rd.seed(123)
 
@@ -63,10 +65,71 @@ def plotModel(model):
                     plt.annotate(model.pts[i][2], xy=(x[i], y[i]), xycoords='data')
     plt.show()
 
-cap = 100
-pts = createRandomInstance(12,cap=30)
-model = createPyomoModel(pts,cap)
-solveWithGLPK(model)
-plotModel(model)
 
-print pts
+### heuristica
+def custo(rotas,md):
+    c = 0
+    for r in rotas:
+        c+= custoSol(r,md)
+    return c
+
+def randomPart(pts,cap):
+    load = []
+    rotas = []
+    idx = [i for i in range(1,len(pts))]
+    rd.shuffle(idx)
+    rotaCont = 0
+    for i in idx:
+        if len(load) == 0 or load[rotaCont-1]+pts[i][2] > cap:
+            load.append(pts[i][2])
+            rotas.append([0,i])
+            rotaCont+=1
+        else:
+            load[rotaCont-1]+=pts[i][2]
+            rotas[rotaCont-1].append(i)
+    # print load, rotas
+
+    return load,rotas
+
+def plotSol(pts, rotas = None):
+    plt.close()
+    for sol in rotas:
+        x = [p[0] for p in pts]
+        y = [p[1] for p in pts]
+        plt.plot(x,y,'ro')
+        if sol != None:
+            x = [pts[p][0] for p in sol]
+            y = [pts[p][1] for p in sol]
+            x.append(pts[sol[0]][0])
+            y.append(pts[sol[0]][1])
+            plt.plot(x, y, '-')
+    plt.show()
+
+def melhoraRota(rotas,md):
+    for r in rotas:
+        VND(r,md)
+
+cap = 100
+pts = createRandomInstance(20,cap=15)
+
+
+# model = createPyomoModel(pts,cap)
+# solveWithGLPK(model)
+# print 'solucao otima ', model.objective()
+# plotModel(model)
+
+md = dist(pts)
+bestcost = np.inf
+best = None
+for i in range(1000):
+    load,rotas = randomPart(pts,cap)
+    melhoraRota(rotas,md)
+    c = custo(rotas, md)
+    if c < bestcost:
+        bestcost = c
+        best = rotas
+        print c
+
+plotSol(pts,best)
+
+
