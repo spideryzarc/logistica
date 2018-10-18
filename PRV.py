@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from utils import *
 import pyomo.environ as env
-from PCV import custoSol, VND
+from PCV import custoSol, VND as PCV_VND
 
 
 rd.seed(123)
@@ -105,25 +105,90 @@ def plotSol(pts, rotas = None):
             plt.plot(x, y, '-')
     plt.show()
 
+def nearestPart(pts,cap,md):
+    load = []
+    rotas = []
+    idx = [i for i in range(1,len(pts))]
+    rd.shuffle(idx)
+    for i in range(1,len(idx)):
+        min= np.inf
+        argj = -1
+        for j in range(i+1,len(idx)):
+            if(md[idx[i-1]][idx[j]]< min):
+                min = md[idx[i-1]][idx[j]]
+                argj = j
+        aux = idx[i]
+        idx[i] = idx[argj]
+        idx[argj] = aux
+    rotaCont = 0
+    for i in idx:
+        if len(load) == 0 or load[rotaCont-1]+pts[i][2] > cap:
+            #abre uma nova rota
+            load.append(pts[i][2])
+            rotas.append([0,i])
+            rotaCont+=1
+        else:
+            load[rotaCont-1]+=pts[i][2]
+            rotas[rotaCont-1].append(i)
+    # print load, rotas
+
+    return load,rotas
+
+def realoca(rotas,load,pts, md, cap):
+    for ra in range(len(rotas)):
+        rotaA = rotas[ra]
+        for i in range(1,len(rotaA)):
+            delrem = md[rotaA[i-1]][rotaA[(i+1)%len(rotaA)]]-md[rotaA[i-1]][rotaA[i]]-md[rotaA[i]][rotaA[(i+1)%len(rotaA)]]
+            for rb in range(len(rotas)):
+                if rb != ra:
+                    rotaB = rotas[rb]
+                    for j in range(1, len(rotaB)):
+                        if load[rb]+pts[rotaA[i]][2] <= cap:
+                            delins =  md[rotaB[j-1]][rotaA[i]]+md[rotaA[i]][rotaB[j]]\
+                                      -md[rotaB[j-1]][rotaB[j]]
+                            if delrem+delins < -0.001:
+                                # print 'realoca', delrem+delins+custo(rotas,md)
+                                # print rotaA
+                                # print rotaB
+                                load[ra] -=pts[rotaA[i]][2]
+                                load[rb] += pts[rotaA[i]][2]
+                                rotaB.insert(j,rotaA[i])
+                                rotaA.remove(rotaA[i])
+                                # PCV_VND(rotaA,md)
+                                # PCV_VND(rotaB, md)
+
+                                # print rotaA
+                                # print rotaB
+                                # print custo(rotas, md)
+                                return True
+
+    return False
+
+
 def melhoraRota(rotas,md):
     for r in rotas:
-        VND(r,md)
+        PCV_VND(r,md)
+
 
 cap = 100
-pts = createRandomInstance(20,cap=15)
+pts = createRandomInstance(100,cap=15)
 
-
+#SOLUCAO EXATA
 # model = createPyomoModel(pts,cap)
 # solveWithGLPK(model)
 # print 'solucao otima ', model.objective()
 # plotModel(model)
 
+
+#SOLUCAO HEURITICA
 md = dist(pts)
 bestcost = np.inf
 best = None
 for i in range(1000):
-    load,rotas = randomPart(pts,cap)
-    melhoraRota(rotas,md)
+    load,rotas = nearestPart(pts,cap,md)
+    while realoca(rotas,load,pts,md,cap):
+        pass
+    melhoraRota(rotas, md)
     c = custo(rotas, md)
     if c < bestcost:
         bestcost = c
