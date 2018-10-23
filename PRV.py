@@ -171,7 +171,7 @@ def melhoraRota(rotas,md):
 
 
 cap = 100
-pts = createRandomInstance(100,cap=15)
+pts = createRandomInstance(50,cap=15)
 
 #SOLUCAO EXATA
 # model = createPyomoModel(pts,cap)

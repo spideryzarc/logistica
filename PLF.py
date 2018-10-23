@@ -1,0 +1,97 @@
+from utils import *
+import pyomo.environ as env
+import random as rd
+import matplotlib.pyplot as plt
+import numpy as np
+rd.seed(7)
+
+def creatRandomInst(nClients, nFacilidades, capMin=20, capMax=60,demMin=5, demMax=15):
+    cli_x = [rd.randint(0,1000) for i in range(nClients)]
+    cli_y = [rd.randint(0, 1000) for i in range(nClients)]
+    cli_d = [rd.randint(demMin, demMax) for i in range(nClients)]
+    fac_x = [rd.randint(0, 1000) for i in range(nFacilidades)]
+    fac_y = [rd.randint(0, 1000) for i in range(nFacilidades)]
+    fac_c = [rd.randint(capMin, capMax) for i in range(nFacilidades)]
+    fac_f = [rd.randint(1, demMax*1000/nFacilidades) for i in range(nFacilidades)]
+    return cli_x,cli_y,cli_d,fac_x,fac_y,fac_c,fac_f
+
+
+def plotPLF(cli_x,cli_y,fac_x,fac_y, model = None):
+    plt.close()
+    plt.plot(cli_x,cli_y,'ro')
+    plt.plot(fac_x,fac_y, 'bx')
+    if(model != None):
+        n = len(cli_x)
+        m = len(fac_x)
+
+        for j in range(m):
+            x = []
+            y = []
+            for i in range(n):
+                if(model.x[j,i].value>.0001):
+                    # print j,i
+                    x.append(fac_x[j])
+                    x.append(cli_x[i])
+                    x.append(fac_x[j])
+                    y.append(fac_y[j])
+                    y.append(cli_y[i])
+                    y.append(fac_y[j])
+            plt.plot(x, y, '-')
+
+    plt.show()
+
+def matrizDist(cli_x,cli_y,fac_x,fac_y):
+    n = len(cli_x)
+    m = len(fac_x)
+    md = np.zeros([m,n])
+    for i in range(n):
+        for j in range(m):
+            md[j][i] = np.sqrt((cli_x[i]-fac_x[j])**2 + (cli_y[i]-fac_y[j])**2)
+    return md
+
+
+def createPyomoModel(cli_d,fac_c,fac_f,md):
+    #numero de facilidades
+    N = len(fac_c)
+    #numero de clientes
+    M = len(cli_d)
+
+    capDic = vectorToDic(fac_c)
+    demDic = vectorToDic(cli_d)
+    costDic = matrixToDic(md)
+
+    model = env.ConcreteModel()
+
+    #conjuntos
+    model.I = env.Set(initialize=capDic.keys(),doc='Conjunto de facilidades')
+    model.J = env.Set(initialize=demDic.keys(), doc='Conjunto de consumidores')
+    #dados
+    model.a = env.Param(model.I,initialize=capDic,doc='Capacidade de cada facilidades')
+    model.b = env.Param(model.J, initialize=demDic, doc='Demanda de cada consumidor')
+    model.C = env.Param(model.I,model.J,initialize=costDic,doc='Custo de transporte unitario')
+    #variaveis
+    model.x = env.Var(model.I,model.J,bounds=(0,None),doc='quantidade transportada de i a j')
+    model.z = env.Var(model.I,within=env.Binary, doc='se facilidade i sera aberta ou nao')
+    #funcao objetivo
+    model.objective = env.Objective(rule=lambda model: sum(model.x[i,j]*model.C[i,j] for i in model.I for j in model.J)
+                                                       +sum(model.z[i]*fac_f[i] for i in model.I),sense=env.minimize)
+    #restricoes
+
+    #capacidade
+    model.cap = env.Constraint(model.I,rule=lambda model,i: sum(model.x[i,j] for j in model.J) <= model.a[i]*model.z[i])
+
+    # demanda
+    model.dem = env.Constraint(model.J, rule=lambda model, j: sum(model.x[i, j] for i in model.I) == model.b[j])
+
+    return model
+
+
+
+cli_x,cli_y,cli_d,fac_x,fac_y,fac_c,fac_f = creatRandomInst(100,40)
+# plotPLF(cli_x,cli_y,fac_x,fac_y)
+md = matrizDist(cli_x,cli_y,fac_x,fac_y)
+
+model = createPyomoModel(cli_d,fac_c,fac_f,md)
+result = solveWithGLPK(model)
+model.display()
+plotPLF(cli_x,cli_y,fac_x,fac_y,model)
