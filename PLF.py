@@ -3,6 +3,7 @@ import pyomo.environ as env
 import random as rd
 import matplotlib.pyplot as plt
 import numpy as np
+from transporte import createPyomoModel as transModel
 rd.seed(7)
 
 def creatRandomInst(nClients, nFacilidades, capMin=20, capMax=60,demMin=5, demMax=15):
@@ -37,6 +38,30 @@ def plotPLF(cli_x,cli_y,fac_x,fac_y, model = None):
                     y.append(cli_y[i])
                     y.append(fac_y[j])
             plt.plot(x, y, '-')
+
+    plt.show()
+
+def plotPLFSol(cli_x,cli_y,fac_x,fac_y, sol):
+    plt.close()
+    plt.plot(cli_x,cli_y,'ro')
+    plt.plot(fac_x,fac_y, 'bx')
+
+    n = len(cli_x)
+    m = len(fac_x)
+
+    for j in range(m):
+        x = []
+        y = []
+        for i in range(n):
+            if(sol[j][i]>.0001):
+                # print j,i
+                x.append(fac_x[j])
+                x.append(cli_x[i])
+                x.append(fac_x[j])
+                y.append(fac_y[j])
+                y.append(cli_y[i])
+                y.append(fac_y[j])
+        plt.plot(x, y, '-')
 
     plt.show()
 
@@ -86,12 +111,59 @@ def createPyomoModel(cli_d,fac_c,fac_f,md):
     return model
 
 
+#heuristica
+def custo(sol,cli_d, fac_f,md):
+    c = 0;
+    for i in range(len(fac_f)):
+        for j in range(len(cli_d)):
+            c+= md[i][j]*cli_d[j]
 
-cli_x,cli_y,cli_d,fac_x,fac_y,fac_c,fac_f = creatRandomInst(100,40)
+    for i in range(len(fac_f)):
+        if sum(sol[i]) >.0001:
+            c+= fac_f[i]
+    return c
+
+
+def greedySol(cli_d,fac_c,fac_f,md):
+    sol = np.zeros((len(fac_c),len(cli_d)))
+    idxFac = [i for i in range(len(fac_c))]
+    rd.shuffle(idxFac)
+    dtotal = sum(cli_d)
+    openFac = []
+    cap = 0
+    i = 0
+    while cap < dtotal and i < len(idxFac):
+        openFac.append(idxFac[i])
+        cap+= fac_c[idxFac[i]]
+        i+=1
+    if cap < dtotal:
+        print 'instancia nao viavel'
+        exit(1)
+    openFac_c = [fac_c[i] for i in openFac]
+    openMD = md[openFac]
+    model = transModel(openFac_c, cli_d, openMD)
+    result = solveWithGLPK(model)
+    for i in range(len(openFac)):
+        for j in range(len(cli_d)):
+            sol[openFac[i]][j] = model.x[i,j].value
+
+    return sol
+
+
+cli_x,cli_y,cli_d,fac_x,fac_y,fac_c,fac_f = creatRandomInst(100,50,capMin=200, capMax=250)
 # plotPLF(cli_x,cli_y,fac_x,fac_y)
 md = matrizDist(cli_x,cli_y,fac_x,fac_y)
 
-model = createPyomoModel(cli_d,fac_c,fac_f,md)
-result = solveWithGLPK(model)
-model.display()
-plotPLF(cli_x,cli_y,fac_x,fac_y,model)
+min = np.inf
+for i in range(100):
+    sol = greedySol(cli_d,fac_c,fac_f,md)
+    d =  custo(sol,cli_d,fac_f,md)
+    if d < min:
+        min = d
+        print min
+
+# plotPLFSol(cli_x,cli_y,fac_x,fac_y,sol)
+# model = createPyomoModel(cli_d,fac_c,fac_f,md)
+# result = solveWithGLPK(model)
+# model.display()
+# plotPLF(cli_x,cli_y,fac_x,fac_y,model)

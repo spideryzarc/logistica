@@ -35,7 +35,7 @@ def createPyomoModel(capacity,demand,cost):
 
 
 
-model = createPyomoModel([1,1],[1,1],[[21,22],[23,24]])
-
-result = solveWithGLPK(model)
-model.display()
+# model = createPyomoModel([1,1],[1,1],[[21,22],[23,24]])
+#
+# result = solveWithGLPK(model)
+# model.display()
