@@ -8,8 +8,8 @@ from PCV import custoSol, VND as PCV_VND
 
 rd.seed(123)
 
-def createRandomInstance(n, max=100, cap = 100):
-    return [(rd.random()*max,rd.random()*max,rd.randint(1,cap)) for i in range(n)]
+def createRandomInstance(n, max=100, dem = 100):
+    return [(rd.random()*max,rd.random()*max,rd.randint(1, dem)) for i in range(n)]
 
 def createPyomoModel(pts,cap):
     #preparacao dos dados
@@ -170,8 +170,8 @@ def melhoraRota(rotas,md):
         PCV_VND(r,md)
 
 
-cap = 100
-pts = createRandomInstance(50,cap=15)
+cap = 5
+pts = createRandomInstance(20, dem=1)
 
 #SOLUCAO EXATA
 # model = createPyomoModel(pts,cap)
@@ -184,7 +184,7 @@ pts = createRandomInstance(50,cap=15)
 md = dist(pts)
 bestcost = np.inf
 best = None
-for i in range(1000):
+for i in range(100):
     load,rotas = nearestPart(pts,cap,md)
     while realoca(rotas,load,pts,md,cap):
         pass
